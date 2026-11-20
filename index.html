@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>SVARGA — Petualangan Dunia Terbuka</title>
+<meta name="description" content="SVARGA: game dunia terbuka 3D di browser. Jelajahi lembah, kumpulkan serpihan aether, nyalakan menara kuno, dan buka Gerbang Svarga.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-state="loading">
+<canvas id="game" aria-label="Dunia 3D SVARGA"></canvas>
+<div id="vignette"></div><div id="dmg"></div><div id="flash"></div>
+<div id="lbTop" class="lb"></div><div id="lbBot" class="lb"></div>
+
+<!-- ==================== HUD ==================== -->
+<div id="hud">
+  <div id="objPanel" class="panel">
+    <div class="hdr"><b>MISI UTAMA</b><span id="modeChip">Petualang</span></div>
+    <div class="objRow shard"><span class="ic">◆</span><span>Serpihan di tangan: <b id="objShards">0</b></span></div>
+    <div class="objRow beac"><span class="ic">⬥</span><span>Menara menyala: <b id="objBeacons">0 / 6</b></span></div>
+    <div id="objMain">Kumpulkan serpihan aether</div>
+    <div id="objSub"></div>
+  </div>
+  <canvas id="compass"></canvas>
+  <div id="topRight">
+    <div class="trBtns">
+      <button id="muteBtn" class="iconBtn clickable" aria-label="Bisukan suara">
+        <svg id="icoSndOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9.4 9.4 0 0 1 0 13"/></svg>
+        <svg id="icoSndOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="m16 9 6 6M22 9l-6 6"/></svg>
+      </button>
+      <button id="pauseBtn" class="iconBtn clickable" aria-label="Jeda">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>
+      </button>
+    </div>
+    <div id="mapWrap" class="clickable" title="Klik untuk zoom peta"><canvas id="minimap"></canvas><div id="mapHint">peta penuh</div></div>
+    <div id="timeChip">
+      <svg id="timeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      <svg id="timeIconMoon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+      <span id="timeLabel">Pagi</span>
+    </div>
+  </div>
+  <div id="bottomLeft">
+    <div class="bar hp"><svg class="bic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-8-5.3-8-11a4.6 4.6 0 0 1 8-3.1A4.6 4.6 0 0 1 20 10c0 5.7-8 11-8 11z"/></svg><div class="fill" id="hpFill" style="width:100%"></div><span class="val" id="hpVal">100</span></div>
+    <div class="bar en"><svg class="bic" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg><div class="fill" id="enFill" style="width:100%"></div><span class="val" id="enVal">100</span></div>
+    <div id="chips">
+      <div class="chip" id="shardChip"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 19 12 12 22 5 12z"/></svg><b id="shardNum">0</b></div>
+      <div class="chip" id="burstChip" title="Ledakan Cahaya"><div id="burstCd"></div><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l2.4 6.6L21 10l-6.6 2.4L12 19l-2.4-6.6L3 10l6.6-2.4z"/><circle cx="19" cy="19" r="2"/><circle cx="5" cy="18" r="1.5"/></svg><span class="kb">KLIK / F</span></div>
+    </div>
+  </div>
+  <div id="prompt"><span id="chRingWrap"><svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="11" fill="none" stroke="rgba(245,196,81,.2)" stroke-width="3.5"/><circle id="chRing" cx="14" cy="14" r="11" fill="none" stroke="#ffd76a" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="69.1" stroke-dashoffset="69.1"/></svg></span><span id="promptKey">E</span><span id="promptText"></span></div>
+  <div id="toasts"></div>
+  <div id="hintBar"><b>WASD</b> gerak · <b>Shift</b> lari · <b>Spasi</b> lompat · <b>E</b> interaksi · <b>Klik</b> ledakan · <b>H</b> panduan</div>
+  <div id="lockHint"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2.5" width="10" height="19" rx="5"/><path d="M12 6v4"/></svg><span id="lockHintText">Klik untuk mengunci kursor · Esc untuk jeda</span></div>
+  <div id="fps">— FPS</div>
+</div>
+
+<!-- ==================== TOUCH ==================== -->
+<div id="touchUI">
+  <div id="joyZone"><div id="joyBase"><div id="joyThumb"></div></div></div>
+  <button class="tBtn" id="tJump" aria-label="Lompat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5M5 12l7-7 7 7"/></svg><small>LOMPAT</small></button>
+  <button class="tBtn" id="tBurst" aria-label="Ledakan cahaya"><div id="tBurstCd"></div><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l2.4 6.6L21 10l-6.6 2.4L12 19l-2.4-6.6L3 10l6.6-2.4z"/></svg><small>LEDAKAN</small></button>
+  <button class="tBtn" id="tInteract" aria-label="Interaksi">E<small>GUNA</small></button>
+</div>
+
+<!-- ==================== LOADING ==================== -->
+<div id="loading" class="screen on">
+  <div class="screenInner">
+    <svg id="loadCrystal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 1.5 19.5 12 12 22.5 4.5 12z"/><path d="M4.5 12h15M12 1.5 8.5 12l3.5 10.5L15.5 12z"/></svg>
+    <h1>SVARGA</h1>
+    <div style="font-size:11px;letter-spacing:.34em;color:var(--muted);font-weight:700">MEMBANGUN DUNIA</div>
+    <div id="loadTrack"><div id="loadBar"></div></div>
+    <div id="loadPct">0%</div>
+    <div id="loadStep">Membangkitkan benih dunia…</div>
+    <div class="loadTip"><b>Tip:</b> Menara yang menyala akan mengusir semua bayangan di sekitarnya — jadikan ia tempat berlindung.</div>
+  </div>
+</div>
+
+<!-- ==================== TITLE ==================== -->
+<div id="title" class="screen">
+  <div class="screenInner">
+    <div class="overline stagger d1">Petualangan Dunia Terbuka</div>
+    <h1 class="bigTitle stagger d2">SVARGA</h1>
+    <div class="tagline stagger d2">Lembah Cahaya yang Terlupakan</div>
+    <div class="ornament stagger d3"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 19 12 12 22 5 12z"/></svg></div>
+    <p class="story stagger d3">Enam menara kuno penjaga lembah telah padam, dan <i>bayangan</i> mulai berkeliaran di antara pepohonan. Kumpulkan <b>serpihan aether</b>, nyalakan kembali menara-menara itu, dan buka <i>Gerbang Svarga</i> di jantung lembah — sebelum malam menelan cahaya terakhir.</p>
+    <div id="diffCards" class="stagger d4">
+      <div class="diffCard" data-diff="santai"><div class="di">🕊️</div><div><div class="dn">Santai</div><div class="dd">Jelajah tenang. Bayangan enggan mengganggu.</div></div></div>
+      <div class="diffCard sel" data-diff="petualang"><div class="di">⚔️</div><div><div class="dn">Petualang</div><div class="dd">Takdir seorang penjelajah sejati.</div></div></div>
+      <div class="diffCard" data-diff="ksatria"><div class="di">🔥</div><div><div class="dn">Ksatria</div><div class="dd">Lembah ini tidak memaafkan kelengahan.</div></div></div>
+    </div>
+    <button id="btnStart" class="btn primary stagger d5">MULAI PETUALANGAN
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg></button>
+    <div class="titleRow stagger d6">
+      <button id="btnHelp1" class="btn ghost">PANDUAN</button>
+      <select id="qSelTitle" aria-label="Kualitas grafis">
+        <option value="rendah">Grafis: Rendah</option><option value="sedang">Grafis: Sedang</option>
+        <option value="tinggi" selected>Grafis: Tinggi</option><option value="ultra">Grafis: Ultra</option>
+      </select>
+      <div id="bestChip">Rekor Petualang: —</div>
+    </div>
+    <div class="ctrlGrid stagger d6">
+      <div class="ctrlRow"><span>Gerak</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div>
+      <div class="ctrlRow"><span>Lihat sekeliling</span><span><kbd>Mouse</kbd></span></div>
+      <div class="ctrlRow"><span>Lari / Lompat</span><span><kbd>Shift</kbd> <kbd>Spasi</kbd></span></div>
+      <div class="ctrlRow"><span>Ledakan cahaya</span><span><kbd>Klik Kiri</kbd> / <kbd>F</kbd></span></div>
+      <div class="ctrlRow"><span>Nyalakan menara</span><span><kbd>E</kbd> tahan</span></div>
+      <div class="ctrlRow"><span>Jeda / Panduan</span><span><kbd>Esc</kbd> <kbd>H</kbd></span></div>
+    </div>
+    <div class="titleFoot stagger d6">Dibangun dengan Three.js · Seluruh dunia, tekstur &amp; suara dibuat prosedural<br>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5 6 9H2v6h4l5 4V5z"/></svg> Suara aktif saat bermain — bisukan kapan saja lewat tombol di kanan atas · <kbd>M</kbd></div>
+  </div>
+</div>
+
+<!-- ==================== PAUSE ==================== -->
+<div id="pause" class="screen">
+  <div class="modal">
+    <h2>PERJALANAN DIJEDA</h2>
+    <div class="msub">Lembah menantimu kembali</div>
+    <div class="pStats"><span>Waktu <b id="pTime">00:00</b></span><span>Menara <b id="pBeacons">0/6</b></span><span>Serpihan <b id="pShards">0</b></span></div>
+    <div class="pBtns">
+      <button id="btnResume" class="btn primary">LANJUTKAN</button>
+      <button id="btnHelp2" class="btn ghost">PANDUAN &amp; LEGENDA</button>
+      <button id="btnRetry" class="btn ghost">ULANGI PERJALANAN</button>
+      <button id="btnTitle" class="btn ghost">KE LAYAR JUDUL</button>
+      <button id="btnNew2" class="btn ghost dangerous">DUNIA BARU (SEED BARU)</button>
+    </div>
+    <div class="setGrid">
+      <div class="setCell"><label>Kualitas Grafis</label><select id="qSel">
+        <option value="rendah">Rendah</option><option value="sedang">Sedang</option><option value="tinggi">Tinggi</option><option value="ultra">Ultra</option></select></div>
+      <div class="setCell"><label>Kesulitan</label><select id="diffSel">
+        <option value="santai">Santai</option><option value="petualang">Petualang</option><option value="ksatria">Ksatria</option></select></div>
+      <div class="setCell"><label>Sensitivitas Mouse</label><div class="row"><input type="range" id="sensRange" min="0.4" max="2" step="0.05" value="1" style="flex:1"><span id="sensVal">1.00</span></div></div>
+      <div class="setCell"><label>Suara</label><button id="sndToggle" class="btn ghost" style="padding:9px 12px">SUARA: AKTIF</button></div>
+      <div class="setNote">Perubahan jumlah bayangan akibat kesulitan berlaku penuh pada perjalanan berikutnya. Kualitas diterapkan langsung.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== HELP ==================== -->
+<div id="help" class="screen">
+  <div class="modal">
+    <h2>PANDUAN PENJELAJAH</h2>
+    <div class="msub">Semua yang perlu kau tahu tentang lembah</div>
+    <div class="helpSec"><h3>KENDALI</h3>
+      <div class="helpGrid">
+        <div class="ctrlRow"><span>Gerak</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div>
+        <div class="ctrlRow"><span>Lari (energi)</span><span><kbd>Shift</kbd></span></div>
+        <div class="ctrlRow"><span>Lompat</span><span><kbd>Spasi</kbd></span></div>
+        <div class="ctrlRow"><span>Ledakan cahaya</span><span><kbd>Klik</kbd>/<kbd>F</kbd></span></div>
+        <div class="ctrlRow"><span>Nyalakan menara</span><span><kbd>E</kbd> tahan</span></div>
+        <div class="ctrlRow"><span>Zoom kamera</span><span><kbd>Roda Mouse</kbd></span></div>
+        <div class="ctrlRow"><span>Zoom peta</span><span><kbd>Klik Peta</kbd></span></div>
+        <div class="ctrlRow"><span>Jeda / Bisukan</span><span><kbd>Esc</kbd> <kbd>M</kbd></span></div>
+      </div>
+      <div class="setNote" style="margin-top:8px">Di layar sentuh: joystick kiri untuk gerak (dorong penuh = lari), geser kanan untuk melihat, tombol aksi di kanan bawah.</div>
+    </div>
+    <div class="helpSec"><h3>LEGENDA PETA</h3>
+      <div class="legendRow"><span class="li" style="color:var(--aether)">◆</span>Serpihan aether — 3 dibutuhkan tiap menara</div>
+      <div class="legendRow"><span class="li" style="color:var(--gold)">⬥</span>Menara cahaya — menyala = wilayah aman</div>
+      <div class="legendRow"><span class="li" style="color:var(--danger)">●</span>Bayangan — jangan biarkan ia menyentuhmu</div>
+      <div class="legendRow"><span class="li" style="color:var(--gold-hot)">✦</span>Gerbang Svarga — tujuan akhir di pusat lembah</div>
+    </div>
+    <div class="helpSec"><h3>TIP BERTAHAN HIDUP</h3>
+      <ul class="tipsList">
+        <li><b>Ledakan cahaya</b> mengusir bayangan di sekitarmu, tetapi menguras 35 energi.</li>
+        <li>Menara yang <b>baru dinyalakan</b> mengusir semua bayangan dalam radius besar.</li>
+        <li><b>Malam lebih berbahaya</b> — bayangan mendeteksi dari jarak lebih jauh. Kunang-kunang akan menemanimu.</li>
+        <li>Berenang menguras energi; kehabisan energi di air akan <b>menguras nyawa</b>.</li>
+        <li>Jika gugur, kau bangkit di <b>menara menyala terdekat</b> — progres tidak hilang.</li>
+        <li>Pilar cahaya menara terlihat dari kejauhan — gunakan sebagai <b>mercusuar</b>.</li>
+      </ul>
+    </div>
+    <button id="helpClose" class="btn primary" style="width:100%">TUTUP</button>
+  </div>
+</div>
+
+<!-- ==================== DEATH ==================== -->
+<div id="death" class="screen">
+  <h2 class="stagger d1">CAHAYAMU PADAM</h2>
+  <div class="dsub stagger d2">Namun cahaya belum selesai denganmu — bangkit kembali dalam</div>
+  <div id="deathCount" class="stagger d3">3</div>
+</div>
+
+<!-- ==================== VICTORY ==================== -->
+<div id="victory" class="screen">
+  <div class="screenInner">
+    <div class="overline stagger d1">Gerbang Telah Terbuka</div>
+    <h2 class="stagger d2">SVARGA BERSINAR KEMBALI</h2>
+    <div id="rankWrap" class="stagger d3">
+      <div id="rankCircle"><span id="rankLetter">S</span></div>
+      <div><div class="rankLbl">PERINGKAT PENJELAJAH</div><div class="rankDesc" id="rankDesc">Legenda lembah.</div></div>
+    </div>
+    <div class="statGrid stagger d4">
+      <div class="statCell gold"><div class="sv" id="stTime">00:00</div><div class="sl">Waktu Jelajah</div></div>
+      <div class="statCell"><div class="sv" id="stShards">0</div><div class="sl">Serpihan Dikumpulkan</div></div>
+      <div class="statCell"><div class="sv" id="stWisps">0</div><div class="sl">Bayangan Terusir</div></div>
+      <div class="statCell"><div class="sv" id="stDeaths">0</div><div class="sl">Kali Gugur</div></div>
+    </div>
+    <div id="recordLine" class="stagger d4"></div>
+    <div class="vBtns stagger d5">
+      <button id="btnAgain" class="btn primary">MAIN LAGI</button>
+      <button id="btnNewWorld" class="btn ghost">DUNIA BARU</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FATAL ==================== -->
+<div id="fatal" class="screen">
+  <h2>CAHAYA TERHALANG</h2>
+  <div id="fatalMsg">Terjadi kendala saat memuat dunia.</div>
+  <button class="btn primary" onclick="location.reload()">MUAT ULANG</button>
+</div>
+<div id="grain"></div>
+
+<script>
+window.__svargaBoot=false;
+setTimeout(function(){if(!window.__svargaBoot){var f=document.getElementById('fatal');document.getElementById('fatalMsg').textContent='Gagal memuat Three.js dari CDN. Periksa koneksi internetmu, lalu muat ulang.';f.classList.add('on');}},16000);
+</script>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
